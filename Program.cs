@@ -1,11 +1,21 @@
+using LitExplorerAPI.LitExplorerModels;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<LitExplorerContext>
+(
+    options => options.UseSqlServer
+    (
+        builder.Configuration.GetConnectionString("DebugConnection"),
+        o=>o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+    )
+);
 
 var app = builder.Build();
 
