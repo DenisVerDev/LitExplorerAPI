@@ -32,13 +32,17 @@ namespace LitExplorerAPI.Controllers
                     .Include(bm => bm.Author)
                     .AsQueryable();
 
-                //query = ApplyFilters(query, filter);
+                query = ApplyFilters(query, filter);
                 query = ApplySorting(query, filter);
 
                 var booksMeta = await query.Skip(page * count).Take(count).ToListAsync();
-                var booksDTO = ToDTO(booksMeta);
+                
+                var booksDTO = ToBookDTO(booksMeta);
+                var authorsDTO = ToAuthorDTO(booksMeta);
 
-                return booksDTO.IsNullOrEmpty() ? NotFound() : Ok(booksDTO);
+                var result = new { Books = booksDTO, Authors = authorsDTO};
+
+                return booksDTO.IsNullOrEmpty() ? NotFound() : Ok(result);
             }
             catch(Exception ex)
             {
@@ -46,44 +50,44 @@ namespace LitExplorerAPI.Controllers
             }
         }
 
-        //private IQueryable<BooksMetum> ApplyFilters(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
-        //{
-        //    if(!filter.Title.IsNullOrEmpty())
-        //        query = query.Where(bm=>bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!));
+        private IQueryable<BooksMetum> ApplyFilters(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
+        {
+            if (!filter.Title.IsNullOrEmpty())
+                query = query.Where(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!));
 
-        //    if (!filter.Tags.IsNullOrEmpty())
-        //        query = query.Where(bm => bm.BookSource.Tags.Any(t=> filter.Tags!.Contains(t.TagId)));
+            if (!filter.Tags.IsNullOrEmpty())
+                query = query.Where(bm => bm.BookSource.Tags.Any(t => filter.Tags!.Contains(t.TagId)));
 
-        //    if (!filter.Sources.IsNullOrEmpty())
-        //        query = query.Where(bm => filter.Sources!.Contains(bm.BookSource.SourceId));
+            if (!filter.Sources.IsNullOrEmpty())
+                query = query.Where(bm => filter.Sources!.Contains(bm.BookSource.SourceId));
 
-        //    if (filter.AverageRatingRange.HasValue)
-        //    {
-        //        double minRating = filter.AverageRatingRange.Value.Key;
-        //        double maxRating = filter.AverageRatingRange.Value.Value;
-                
-        //        query = query.Where(bm =>bm.AverageRating >= minRating && bm.AverageRating <= maxRating);
-        //    }
+            if (filter.AverageRatingRange.HasValue)
+            {
+                double minRating = filter.AverageRatingRange.Value.Key;
+                double maxRating = filter.AverageRatingRange.Value.Value;
 
-        //    if (filter.ChaptersCountRange.HasValue)
-        //    {
-        //        int minChapters = filter.ChaptersCountRange.Value.Key;
-        //        int maxChapters = filter.ChaptersCountRange.Value.Value;
-        //        query = query.Where(bm => bm.ChaptersCount >= minChapters && bm.ChaptersCount <= maxChapters);
-        //    }
+                query = query.Where(bm => bm.AverageRating >= minRating && bm.AverageRating <= maxRating);
+            }
 
-        //    if (filter.ReleaseYearRange.HasValue)
-        //    {
-        //        int minYear = filter.ReleaseYearRange.Value.Key;
-        //        int maxYear = filter.ReleaseYearRange.Value.Value;
+            if (filter.ChaptersCountRange.HasValue)
+            {
+                int minChapters = filter.ChaptersCountRange.Value.Key;
+                int maxChapters = filter.ChaptersCountRange.Value.Value;
+                query = query.Where(bm => bm.ChaptersCount >= minChapters && bm.ChaptersCount <= maxChapters);
+            }
 
-        //        query = query.Where(bm => bm.FirstChapterReleaseDate.HasValue &&
-        //            bm.FirstChapterReleaseDate.Value.Year >= minYear &&
-        //            bm.FirstChapterReleaseDate.Value.Year <= maxYear);
-        //    }
+            if (filter.ReleaseYearRange.HasValue)
+            {
+                int minYear = filter.ReleaseYearRange.Value.Key;
+                int maxYear = filter.ReleaseYearRange.Value.Value;
 
-        //    return query;
-        //}
+                query = query.Where(bm => bm.FirstChapterReleaseDate.HasValue &&
+                    bm.FirstChapterReleaseDate.Value.Year >= minYear &&
+                    bm.FirstChapterReleaseDate.Value.Year <= maxYear);
+            }
+
+            return query;
+        }
 
         private IQueryable<BooksMetum> ApplySorting(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
         {
@@ -144,7 +148,7 @@ namespace LitExplorerAPI.Controllers
             return query;
         }
 
-        private List<BookDTO>? ToDTO(List<BooksMetum> booksMeta)
+        private List<BookDTO>? ToBookDTO(List<BooksMetum> booksMeta)
         {
             try
             {
@@ -182,6 +186,24 @@ namespace LitExplorerAPI.Controllers
                 }).ToList();
 
                 return bookDTOs;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private List<AuthorDTO>? ToAuthorDTO(List<BooksMetum> booksMeta)
+        {
+            try
+            {
+                var authorsDTO = booksMeta.Select(bm => new AuthorDTO
+                {
+                    AuthorId = bm.Author.AuthorId,
+                    AuthorName = bm.Author.AuthorName
+                }).DistinctBy(a=>a.AuthorId).ToList();
+
+                return authorsDTO;
             }
             catch
             {
