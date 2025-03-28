@@ -6,6 +6,6 @@
 
         public string Title { get; set; } = null!;
 
-        public List<BookSourceDTO> BookSources = null!;
+        public List<BookSourceDTO> BookSources { get; set; } = null!;
     }
 }
