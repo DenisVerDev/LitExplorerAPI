@@ -42,7 +42,7 @@ namespace LitExplorerAPI.Controllers
 
                 var result = new { Books = booksDTO, Authors = authorsDTO};
 
-                return booksDTO.IsNullOrEmpty() ? NotFound() : Ok(result);
+                return booksDTO.IsNullOrEmpty() || authorsDTO.IsNullOrEmpty() ? NotFound() : Ok(result);
             }
             catch(Exception ex)
             {
