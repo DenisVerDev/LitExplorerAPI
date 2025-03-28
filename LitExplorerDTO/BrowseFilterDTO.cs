@@ -20,7 +20,7 @@
 
     public class BrowseFilterDTO
     {
-        public string? Keywords { get; set; } // for book title and description
+        public string? Title { get; set; }
 
         public List<int>? Tags { get; set; } // tags ids
 
