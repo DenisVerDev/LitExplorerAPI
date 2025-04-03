@@ -11,7 +11,7 @@ public partial class Source
 
     public string HomePageUrl { get; set; } = null!;
 
-    public string? IconUrl { get; set; }
+    public byte[]? Icon { get; set; }
 
     public virtual ICollection<BooksSource> BooksSources { get; set; } = new List<BooksSource>();
 }
