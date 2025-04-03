@@ -80,7 +80,7 @@ namespace LitExplorerAPI.Controllers
                     SourceId = tc.SourceId,
                     SourceName = tc.SourceName,
                     HomePageUrl = tc.HomePageUrl,
-                    IconUrl = tc.IconUrl
+                    Icon = tc.Icon
                 }).ToList();
 
                 return sourcesDTO.IsNullOrEmpty() ? NotFound() : Ok(sourcesDTO);
