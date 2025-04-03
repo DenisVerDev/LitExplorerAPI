@@ -112,6 +112,9 @@ public partial class LitExplorerContext : DbContext
             entity.Property(e => e.HomePageUrl)
                 .HasMaxLength(2048)
                 .HasColumnName("HomePageURL");
+            entity.Property(e => e.IconUrl)
+                .HasMaxLength(2048)
+                .HasColumnName("IconURL");
             entity.Property(e => e.SourceName).HasMaxLength(255);
         });
 
