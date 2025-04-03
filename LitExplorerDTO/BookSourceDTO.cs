@@ -9,5 +9,9 @@
         public int SourceId { get; set; }
 
         public string SiteUrl { get; set; } = null!;
+
+        public BookMetaDTO BookMeta { get; set; } = null!;
+
+        public List<TagDTO> Tags { get; set; } = null!;
     }
 }

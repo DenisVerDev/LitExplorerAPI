@@ -5,5 +5,7 @@
         public int BookId { get; set; }
 
         public string Title { get; set; } = null!;
+
+        public List<BookSourceDTO> BookSources { get; set; } = null!;
     }
 }
