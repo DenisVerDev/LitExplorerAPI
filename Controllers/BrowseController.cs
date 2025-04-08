@@ -61,33 +61,26 @@ namespace LitExplorerAPI.Controllers
             if (!filter.Sources.IsNullOrEmpty())
                 query = query.Where(bm => filter.Sources!.Contains(bm.BookSource.SourceId));
 
-            if (filter.AverageRatingRange.HasValue)
-            {
-                double minRating = filter.AverageRatingRange.Value.Key;
-                double maxRating = filter.AverageRatingRange.Value.Value;
+            // AverageRatingRange segment
+            if (filter.AverageRatingRange.Key.HasValue) // minRating condition
+                query = query.Where(bm => bm.AverageRating >= filter.AverageRatingRange.Key.Value);
 
-                query = query.Where(bm => bm.AverageRating >= minRating && bm.AverageRating <= maxRating);
-            }
+            if (filter.AverageRatingRange.Value.HasValue) // maxRating condition
+                query = query.Where(bm => bm.AverageRating <= filter.AverageRatingRange.Value.Value);
 
-            if (filter.ChaptersCountRange.HasValue)
-            {
-                int minChapters = filter.ChaptersCountRange.Value.Key;
-                int maxChapters = filter.ChaptersCountRange.Value.Value;
-                query = query.Where(bm => bm.ChaptersCount >= minChapters && bm.ChaptersCount <= maxChapters);
-            }
+            // ChaptersCountRange segment
+            if (filter.ChaptersCountRange.Key.HasValue) // min number of chapters condition
+                query = query.Where(bm => bm.ChaptersCount >= filter.ChaptersCountRange.Key.Value);
+            
+            if (filter.ChaptersCountRange.Value.HasValue) // max number of chapters condition
+                query = query.Where(bm => bm.ChaptersCount <= filter.ChaptersCountRange.Value.Value);
 
-            if (filter.ActivityYearRange.HasValue)
-            {
-                int minYear = filter.ActivityYearRange.Value.Key;
-                int maxYear = filter.ActivityYearRange.Value.Value;
+            // ActivityYearRange segment
+            if (filter.ActivityYearRange.Key.HasValue) // min year condition
+                query = query.Where(bm => bm.FirstChapterReleaseDate!.Value.Year >= filter.ActivityYearRange.Key.Value);
 
-                query = query.Where
-                (
-                    bm => bm.FirstChapterReleaseDate.HasValue && bm.LastChapterReleaseDate.HasValue &&
-                    ((bm.FirstChapterReleaseDate.Value.Year >= minYear && bm.FirstChapterReleaseDate.Value.Year <= maxYear) ||
-                    (bm.LastChapterReleaseDate.Value.Year >= minYear && bm.LastChapterReleaseDate.Value.Year <= maxYear))
-                );
-            }
+            if (filter.ActivityYearRange.Value.HasValue) // max year condition
+                query = query.Where(bm => bm.LastChapterReleaseDate!.Value.Year <= filter.ActivityYearRange.Value.Value);
 
             return query;
         }
