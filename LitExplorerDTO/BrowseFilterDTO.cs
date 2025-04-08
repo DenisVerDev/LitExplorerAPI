@@ -26,11 +26,11 @@
 
         public List<int>? Sources { get; set; }
 
-        public KeyValuePair<double, double>? AverageRatingRange { get; set; }
+        public KeyValuePair<double?, double?> AverageRatingRange { get; set; }
 
-        public KeyValuePair<int, int>? ChaptersCountRange { get; set; }
+        public KeyValuePair<int?, int?> ChaptersCountRange { get; set; }
 
-        public KeyValuePair<int, int>? ActivityYearRange { get; set; } // range in which novel started/ended or is active
+        public KeyValuePair<int?, int?> ActivityYearRange { get; set; } // range in which novel started/ended or is active
 
         public SortByOptions SortByOption { get; set; }
 
