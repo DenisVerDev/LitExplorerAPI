@@ -22,15 +22,15 @@
     {
         public string? Title { get; set; }
 
-        public List<int>? Tags { get; set; } // tags ids
+        public List<int>? Tags { get; set; }
 
-        public List<int>? Sources { get; set; } // source ids
+        public List<int>? Sources { get; set; }
 
-        public KeyValuePair<double, double>? AverageRatingRange { get; set; } // range for average rating score
+        public KeyValuePair<double, double>? AverageRatingRange { get; set; }
 
-        public KeyValuePair<int, int>? ChaptersCountRange { get; set; } // range for chapters count
+        public KeyValuePair<int, int>? ChaptersCountRange { get; set; }
 
-        public KeyValuePair<int, int>? ReleaseYearRange { get; set; }
+        public KeyValuePair<int, int>? ActivityYearRange { get; set; } // range in which novel started/ended or is active
 
         public SortByOptions SortByOption { get; set; }
 
