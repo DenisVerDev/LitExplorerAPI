@@ -56,7 +56,24 @@ namespace LitExplorerAPI.Controllers
                 query = query.Where(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!));
 
             if (!filter.Tags.IsNullOrEmpty())
-                query = query.Where(bm => bm.BookSource.Tags.Any(t => filter.Tags!.Contains(t.TagId)));
+            {
+                var filterTagsCategorised = litExplorerContext.Tags
+                    .Where(t => filter.Tags!.Contains(t.TagId))
+                    .GroupBy(t => t.CategoryId)
+                    .Select(g => new
+                    {
+                        CategoryId = g.Key,
+                        Tags = g.Select(t=>t.TagId).ToList()
+                    }).ToList();
+
+                foreach(var category in filterTagsCategorised)
+                {
+                    if(category.CategoryId < 6)
+                        query = query.Where(bm => category.Tags.All(ft => bm.BookSource.Tags.Any(t => t.CategoryId == category.CategoryId && t.TagId == ft)));
+                    else
+                        query = query.Where(bm => category.Tags.Any(ft => bm.BookSource.Tags.Any(t => t.CategoryId == category.CategoryId && t.TagId == ft)));
+                }
+            }
 
             if (!filter.Sources.IsNullOrEmpty())
                 query = query.Where(bm => filter.Sources!.Contains(bm.BookSource.SourceId));
