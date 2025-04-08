@@ -76,14 +76,17 @@ namespace LitExplorerAPI.Controllers
                 query = query.Where(bm => bm.ChaptersCount >= minChapters && bm.ChaptersCount <= maxChapters);
             }
 
-            if (filter.ReleaseYearRange.HasValue)
+            if (filter.ActivityYearRange.HasValue)
             {
-                int minYear = filter.ReleaseYearRange.Value.Key;
-                int maxYear = filter.ReleaseYearRange.Value.Value;
+                int minYear = filter.ActivityYearRange.Value.Key;
+                int maxYear = filter.ActivityYearRange.Value.Value;
 
-                query = query.Where(bm => bm.FirstChapterReleaseDate.HasValue &&
-                    bm.FirstChapterReleaseDate.Value.Year >= minYear &&
-                    bm.FirstChapterReleaseDate.Value.Year <= maxYear);
+                query = query.Where
+                (
+                    bm => bm.FirstChapterReleaseDate.HasValue && bm.LastChapterReleaseDate.HasValue &&
+                    ((bm.FirstChapterReleaseDate.Value.Year >= minYear && bm.FirstChapterReleaseDate.Value.Year <= maxYear) ||
+                    (bm.LastChapterReleaseDate.Value.Year >= minYear && bm.LastChapterReleaseDate.Value.Year <= maxYear))
+                );
             }
 
             return query;
