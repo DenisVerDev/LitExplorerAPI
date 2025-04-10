@@ -90,27 +90,5 @@ namespace LitExplorerAPI.Controllers
                 return StatusCode(500, new { Message = "An error occurred while retrieving all sources", Error = ex.Message });
             }
         }
-
-        [HttpGet("pages")]
-        public async Task<IActionResult> GetPagesCount(int pageSize)
-        {
-            try
-            {
-                if (pageSize <= 0)
-                    throw new Exception("pageSize should be better than 0");
-
-                int totalBooks = await litExplorerContext.Books.CountAsync();
-                int result = totalBooks / pageSize;
-
-                if (result > 0 && result*pageSize < totalBooks)
-                    result++;
-
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Message = "An error occurred while retrieving number of pages", Error = ex.Message });
-            }
-        }
     }
 }

@@ -16,6 +16,40 @@ namespace LitExplorerAPI.Controllers
         public BrowseController(LitExplorerContext litExplorerContext)
             => this.litExplorerContext = litExplorerContext;
 
+        [HttpPost("pages")]
+        public async Task<IActionResult> GetPagesCount([FromBody] BrowseFilterDTO filter, int pageSize)
+        {
+            try
+            {
+                if (filter == null)
+                    return NotFound();
+
+                if (pageSize <= 0)
+                    throw new Exception("pageSize should be better than 0");
+
+                var query = litExplorerContext.BooksMeta
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.Book)
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.Tags)
+                    .AsQueryable();
+
+                query = ApplyFilters(query, filter);
+
+                int totalBooks = await query.Select(bm => bm.BookSourceId).Distinct().CountAsync();
+                int result = totalBooks / pageSize;
+
+                if (result > 0 && result * pageSize < totalBooks)
+                    result++;
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while retrieving number of pages", Error = ex.Message });
+            }
+        }
+
         [HttpPost]
         public async Task<IActionResult> BrowseBooks([FromBody] BrowseFilterDTO filter, int page, int count)
         {
