@@ -26,7 +26,8 @@ namespace LitExplorerAPI.Controllers
                 var userDb = await litExplorerContext.Users.FirstOrDefaultAsync(u => u.Email == userDTO.Email);
                 if(userDb == null)
                 {
-                    userDb = new User() { Email = userDTO.Email, HashedPassword=userDTO.HashedPassword };
+                    string hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password, workFactor:12);
+                    userDb = new User() { Email = userDTO.Email, HashedPassword = hashedPassword };
                     
                     await litExplorerContext.Users.AddAsync(userDb);
                     await litExplorerContext.SaveChangesAsync();
@@ -37,11 +38,11 @@ namespace LitExplorerAPI.Controllers
                     return Ok(userDTO);
                 }
 
-                return BadRequest("Such user is already registered!");
+                return Conflict("Such user is already registered!");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "An error occurred while registering new user", Error = ex.Message });
+                return StatusCode(500, new { Message = "An error occurred while signing up", Error = ex.Message });
             }
         }
 
@@ -59,14 +60,14 @@ namespace LitExplorerAPI.Controllers
                     userDTO.UserId = userDb.UserId;
                     userDTO.RegistrationDate = userDb.RegistrationDate;
 
-                    return userDb.HashedPassword == userDTO.HashedPassword ? Ok(userDTO) : BadRequest("Wrong password!");
+                    return BCrypt.Net.BCrypt.Verify(userDTO.Password, userDb.HashedPassword) ? Ok(userDTO) : BadRequest("Wrong password!");
                 }
 
-                return BadRequest("Acount under provided email address doesn't exist!");
+                return Conflict("Acount under provided email address doesn't exist!");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Message = "An error occurred while signing up", Error = ex.Message });
+                return StatusCode(500, new { Message = "An error occurred while signing in", Error = ex.Message });
             }
         }
     }
