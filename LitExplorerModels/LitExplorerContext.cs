@@ -29,6 +29,8 @@ public partial class LitExplorerContext : DbContext
 
     public virtual DbSet<TagsCategory> TagsCategories { get; set; }
 
+    public virtual DbSet<User> Users { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Author>(entity =>
@@ -135,6 +137,24 @@ public partial class LitExplorerContext : DbContext
             entity.HasIndex(e => e.CategoryName, "UQ__TagsCate__8517B2E0842835FB").IsUnique();
 
             entity.Property(e => e.CategoryName).HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C05410897");
+
+            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053479575192").IsUnique();
+
+            entity.Property(e => e.Email)
+                .HasMaxLength(320)
+                .IsUnicode(false);
+            entity.Property(e => e.HashedPassword)
+                .HasMaxLength(60)
+                .IsUnicode(false)
+                .IsFixedLength();
+            entity.Property(e => e.RegistrationDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
         });
 
         OnModelCreatingPartial(modelBuilder);
