@@ -3,6 +3,7 @@ using LitExplorerAPI.LitExplorerModels;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 namespace LitExplorerAPI.Controllers
 {
@@ -22,7 +23,10 @@ namespace LitExplorerAPI.Controllers
             {
                 if (userDTO == null)
                     return BadRequest("Received user was null!");
-                
+
+                if(userDTO.Email.IsNullOrEmpty() || userDTO.Password.IsNullOrEmpty())
+                    return BadRequest("Received user data was empty!");
+
                 var userDb = await litExplorerContext.Users.FirstOrDefaultAsync(u => u.Email == userDTO.Email);
                 if(userDb == null)
                 {
@@ -53,6 +57,9 @@ namespace LitExplorerAPI.Controllers
             {
                 if (userDTO == null)
                     return BadRequest("Received user was null!");
+
+                if (userDTO.Email.IsNullOrEmpty() || userDTO.Password.IsNullOrEmpty())
+                    return BadRequest("Received user data was empty!");
 
                 var userDb = await litExplorerContext.Users.FirstOrDefaultAsync(u => u.Email == userDTO.Email);
                 if (userDb != null)
