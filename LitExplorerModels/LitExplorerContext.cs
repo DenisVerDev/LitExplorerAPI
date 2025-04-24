@@ -23,6 +23,10 @@ public partial class LitExplorerContext : DbContext
 
     public virtual DbSet<BooksSource> BooksSources { get; set; }
 
+    public virtual DbSet<Library> Libraries { get; set; }
+
+    public virtual DbSet<LibraryStatus> LibraryStatuses { get; set; }
+
     public virtual DbSet<Source> Sources { get; set; }
 
     public virtual DbSet<Tag> Tags { get; set; }
@@ -103,6 +107,38 @@ public partial class LitExplorerContext : DbContext
                         j.HasKey("BookSourceId", "TagId").HasName("PK__BooksTag__248DC07E2F2D0E9C");
                         j.ToTable("BooksTags");
                     });
+        });
+
+        modelBuilder.Entity<Library>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.BookSourceId });
+
+            entity.Property(e => e.AddedDate)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnType("datetime");
+            entity.Property(e => e.LastUpdateDate).HasColumnType("datetime");
+
+            entity.HasOne(d => d.BookSource).WithMany(p => p.Libraries)
+                .HasForeignKey(d => d.BookSourceId)
+                .HasConstraintName("FK_Libraries_BookSources");
+
+            entity.HasOne(d => d.Status).WithMany(p => p.Libraries)
+                .HasForeignKey(d => d.StatusId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Libraries_Statuses");
+
+            entity.HasOne(d => d.User).WithMany(p => p.Libraries)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_Libraries_Users");
+        });
+
+        modelBuilder.Entity<LibraryStatus>(entity =>
+        {
+            entity.HasKey(e => e.StatusId).HasName("PK__BooksSta__C8EE2063FAB5B470");
+
+            entity.HasIndex(e => e.StatusName, "UQ__BooksSta__05E7698A221980E0").IsUnique();
+
+            entity.Property(e => e.StatusName).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Source>(entity =>

@@ -17,6 +17,8 @@ public partial class BooksSource
 
     public virtual BooksMetum? BooksMetum { get; set; }
 
+    public virtual ICollection<Library> Libraries { get; set; } = new List<Library>();
+
     public virtual Source Source { get; set; } = null!;
 
     public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
