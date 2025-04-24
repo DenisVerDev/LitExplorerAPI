@@ -12,4 +12,6 @@ public partial class User
     public string HashedPassword { get; set; } = null!;
 
     public DateTime RegistrationDate { get; set; }
+
+    public virtual ICollection<Library> Libraries { get; set; } = new List<Library>();
 }
