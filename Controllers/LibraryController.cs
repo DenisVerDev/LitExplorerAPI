@@ -53,6 +53,74 @@ namespace LitExplorerAPI.Controllers
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> ChangeLibraryStatus([FromBody]UserDTO user, int bookId, int? libraryStatus)
+        {
+            try
+            {
+                // 1. Verify user exists
+                var userExists = await litExplorerContext.Users
+                    .AnyAsync(u => u.UserId == user.UserId);
+                if (!userExists)
+                    return NotFound(new { Message = $"User with ID {user.UserId} not found." });
+
+                // 2. Verify book exists
+                var bookExists = await litExplorerContext.Books
+                    .AnyAsync(b => b.BookId == bookId);
+                if (!bookExists)
+                    return NotFound(new { Message = $"Book with ID {bookId} not found." });
+
+                // 3. Try to load existing library entry
+                var entry = await litExplorerContext.Libraries
+                    .FindAsync(user.UserId, bookId);
+
+                // 4. If status is null => delete entry
+                if (libraryStatus == null)
+                {
+                    if (entry != null)
+                    {
+                        litExplorerContext.Libraries.Remove(entry);
+                        await litExplorerContext.SaveChangesAsync();
+                    }
+                    return Ok(new { Message = "Removed from library." });
+                }
+
+                // 5. Validate the provided status ID
+                var statusId = libraryStatus.Value;
+                var validStatus = await litExplorerContext.LibraryStatuses
+                    .AnyAsync(s => s.StatusId == statusId);
+                if (!validStatus)
+                    return BadRequest(new { Message = $"Library status ID {statusId} is invalid." });
+
+                // 6. Create or update
+                if (entry == null)
+                {
+                    // new entry; AddedDate will default via SQL GETDATE()
+                    entry = new Library
+                    {
+                        UserId = user.UserId,
+                        BookId = bookId,
+                        StatusId = statusId,
+                        LastStatusUpdateDate = DateTime.UtcNow
+                    };
+                    litExplorerContext.Libraries.Add(entry);
+                }
+                else
+                {
+                    entry.StatusId = statusId;
+                    entry.LastStatusUpdateDate = DateTime.UtcNow;
+                    litExplorerContext.Libraries.Update(entry);
+                }
+
+                await litExplorerContext.SaveChangesAsync();
+                return Ok(new { Message = "Library status updated." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while changing book's library status", Error = ex.Message });
+            }
+        }
+
         private List<BookDTO>? ToBookDTO(List<BooksMetum> booksMeta)
         {
             try
