@@ -10,6 +10,10 @@
 
         public string SiteUrl { get; set; } = null!;
 
+        public int? LastReadChapter { get; set; } = null;
+
+        public DateTime? LastReadingUpdateDate { get; set; } = null;
+
         public BookMetaDTO BookMeta { get; set; } = null!;
 
         public List<TagDTO> Tags { get; set; } = null!;

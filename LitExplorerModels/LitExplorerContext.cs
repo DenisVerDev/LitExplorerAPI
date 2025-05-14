@@ -27,6 +27,8 @@ public partial class LitExplorerContext : DbContext
 
     public virtual DbSet<LibraryStatus> LibraryStatuses { get; set; }
 
+    public virtual DbSet<ReadingHistory> ReadingHistories { get; set; }
+
     public virtual DbSet<Source> Sources { get; set; }
 
     public virtual DbSet<Tag> Tags { get; set; }
@@ -111,16 +113,16 @@ public partial class LitExplorerContext : DbContext
 
         modelBuilder.Entity<Library>(entity =>
         {
-            entity.HasKey(e => new { e.UserId, e.BookSourceId });
+            entity.HasKey(e => new { e.UserId, e.BookId });
 
             entity.Property(e => e.AddedDate)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnType("datetime");
-            entity.Property(e => e.LastUpdateDate).HasColumnType("datetime");
+            entity.Property(e => e.LastStatusUpdateDate).HasColumnType("datetime");
 
-            entity.HasOne(d => d.BookSource).WithMany(p => p.Libraries)
-                .HasForeignKey(d => d.BookSourceId)
-                .HasConstraintName("FK_Libraries_BookSources");
+            entity.HasOne(d => d.Book).WithMany(p => p.Libraries)
+                .HasForeignKey(d => d.BookId)
+                .HasConstraintName("FK_Libraries_Books");
 
             entity.HasOne(d => d.Status).WithMany(p => p.Libraries)
                 .HasForeignKey(d => d.StatusId)
@@ -139,6 +141,23 @@ public partial class LitExplorerContext : DbContext
             entity.HasIndex(e => e.StatusName, "UQ__BooksSta__05E7698A221980E0").IsUnique();
 
             entity.Property(e => e.StatusName).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<ReadingHistory>(entity =>
+        {
+            entity.HasKey(e => new { e.UserId, e.BookSourceId });
+
+            entity.ToTable("ReadingHistory");
+
+            entity.Property(e => e.LastReadingUpdateDate).HasColumnType("datetime");
+
+            entity.HasOne(d => d.BookSource).WithMany(p => p.ReadingHistories)
+                .HasForeignKey(d => d.BookSourceId)
+                .HasConstraintName("FK_ReadingHistory_BooksSources");
+
+            entity.HasOne(d => d.User).WithMany(p => p.ReadingHistories)
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_ReadingHistory_Users");
         });
 
         modelBuilder.Entity<Source>(entity =>
