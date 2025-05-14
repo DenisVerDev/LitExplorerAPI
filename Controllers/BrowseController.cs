@@ -36,7 +36,7 @@ namespace LitExplorerAPI.Controllers
 
                 query = ApplyFilters(query, filter);
 
-                int totalBooks = await query.Select(bm => bm.BookSource.BookId).Distinct().CountAsync();
+                int totalBooks = await query.Select(bm => bm.BookSource.BookSourceId).Distinct().CountAsync();
                 int result = totalBooks / pageSize;
 
                 if (result > 0 && result * pageSize < totalBooks)
@@ -76,7 +76,7 @@ namespace LitExplorerAPI.Controllers
 
                 // 2nd part - picking results
                 query = query.Skip(page * count).Take(count * 2); // 2 is number of sources in database. Duplicate metadata of the same books is possible
-
+                
                 var books = await query.Select(bm => bm.BookSource.BookId).Distinct().Take(count).ToListAsync();
                 var unsortedBooksMeta = await litExplorerContext.BooksMeta
                     .Include(bm => bm.BookSource)
