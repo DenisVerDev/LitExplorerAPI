@@ -14,4 +14,6 @@ public partial class User
     public DateTime RegistrationDate { get; set; }
 
     public virtual ICollection<Library> Libraries { get; set; } = new List<Library>();
+
+    public virtual ICollection<ReadingHistory> ReadingHistories { get; set; } = new List<ReadingHistory>();
 }
