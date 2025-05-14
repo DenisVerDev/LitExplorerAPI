@@ -53,8 +53,8 @@ namespace LitExplorerAPI.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> ChangeLibraryStatus([FromBody]UserDTO user, int bookId, int? libraryStatus)
+        [HttpPost("updateLibraryStatus")]
+        public async Task<IActionResult> UpdateLibraryStatus([FromBody]UserDTO user, int bookId, int? libraryStatus)
         {
             try
             {
@@ -118,6 +118,62 @@ namespace LitExplorerAPI.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { Message = "An error occurred while changing book's library status", Error = ex.Message });
+            }
+        }
+
+        [HttpPost("updateReadingHistory")]
+        public async Task<IActionResult> UpdateReadingHistory([FromBody] UserDTO user, int bookSourceId, int? lastReadChapter)
+        {
+            try
+            {
+                // 1. Verify the user exists
+                var userExists = await litExplorerContext.Users
+                    .AnyAsync(u => u.UserId == user.UserId);
+                if (!userExists)
+                    return NotFound(new { Message = $"User with ID {user.UserId} not found." });
+
+                // 2. Verify the book-source exists
+                var source = await litExplorerContext.BooksSources
+                    .Where(bs => bs.BookSourceId == bookSourceId).FirstOrDefaultAsync();
+                if (source == null)
+                    return NotFound(new { Message = $"BookSource with ID {bookSourceId} not found." });
+
+                // 3. Verify if books is in personal library
+                var library = await litExplorerContext.Libraries.FindAsync(user.UserId, source.BookId);
+                if (library == null)
+                    return NotFound(new { Message = $"Book with ID {source.BookId} is not part of user's library." });
+
+                // 4. Try to load an existing history entry (PK is (UserId, BookSourceId))
+                var history = await litExplorerContext.ReadingHistories
+                    .FindAsync(user.UserId, bookSourceId);
+
+                if (history == null)
+                {
+                    // 4a. No previous entry: create it
+                    history = new ReadingHistory
+                    {
+                        UserId = user.UserId,
+                        BookSourceId = bookSourceId,
+                        LastReadChapter = lastReadChapter,
+                        LastReadingUpdateDate = DateTime.UtcNow
+                    };
+                    litExplorerContext.ReadingHistories.Add(history);
+                }
+                else
+                {
+                    // 4b. Existing entry: update it
+                    history.LastReadChapter = lastReadChapter;
+                    history.LastReadingUpdateDate = DateTime.UtcNow;
+                    litExplorerContext.ReadingHistories.Update(history);
+                }
+
+                // 5. Persist
+                await litExplorerContext.SaveChangesAsync();
+                return Ok(new { Message = "Reading history updated successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while updating book's reading history", Error = ex.Message });
             }
         }
 
