@@ -90,5 +90,26 @@ namespace LitExplorerAPI.Controllers
                 return StatusCode(500, new { Message = "An error occurred while retrieving all sources", Error = ex.Message });
             }
         }
+
+        [HttpGet("libraryStatuses")]
+        public async Task<IActionResult> GetLibraryStatuses()
+        {
+            try
+            {
+                var libraryStatuses = await litExplorerContext.LibraryStatuses.ToListAsync();
+
+                var libraryStatusesDTO = libraryStatuses.Select(ls => new LibraryStatusDTO
+                {
+                    StatusId = ls.StatusId,
+                    StatusName = ls.StatusName
+                }).ToList();
+
+                return libraryStatusesDTO.IsNullOrEmpty() ? NotFound() : Ok(libraryStatusesDTO);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "An error occurred while retrieving all library statuses", Error = ex.Message });
+            }
+        }
     }
 }

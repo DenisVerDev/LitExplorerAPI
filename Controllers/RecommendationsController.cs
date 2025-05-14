@@ -21,15 +21,20 @@ namespace LitExplorerAPI.Controllers
         {
             try
             {
+                // 1st part - filtering candidates
                 var query = litExplorerContext.BooksMeta
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Book)
+                            .ThenInclude(b => b.Libraries)
+                                .ThenInclude(lib => lib.Status)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.ReadingHistories)
                     .Include(bm => bm.Author)
                     .AsQueryable();
 
-                switch(rOptions)
+                switch (rOptions)
                 {
                     case RecommendationsOptions.BestOfMonth:
                         query = GetBestOfMonth(query);
@@ -46,10 +51,27 @@ namespace LitExplorerAPI.Controllers
                     default: throw new Exception("There is no such supported recommendation option!");
                 }
 
-                var booksMeta = await query.Take(count).ToListAsync();
+                // 2nd part - picking results
+                query = query.Take(count * 2); // 2 is number of sources in database. Duplicate metadata of the same books is possible
+                var books = await query.Select(bm => bm.BookSource.BookId).Distinct().Take(count).ToListAsync();
+                var unsortedBooksMeta = await litExplorerContext.BooksMeta
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.Book)
+                            .ThenInclude(b => b.Libraries)
+                                .ThenInclude(lib => lib.Status)
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.Tags)
+                    .Include(bm => bm.BookSource)
+                        .ThenInclude(bs => bs.ReadingHistories)
+                    .Include(bm => bm.Author)
+                    .Where(bm => books.Any(x => x == bm.BookSource.BookId))
+                    .ToListAsync();
 
-                var booksDTO = ToBookDTO(booksMeta);
-                var authorsDTO = ToAuthorDTO(booksMeta);
+                var sortedBooksMeta = books.SelectMany(b => unsortedBooksMeta.Where(bm => bm.BookSource.BookId == b)).ToList();
+
+                // 3rd part - trasforming into DTO
+                var booksDTO = ToBookDTO(sortedBooksMeta);
+                var authorsDTO = ToAuthorDTO(sortedBooksMeta);
 
                 var result = new { Books = booksDTO, Authors = authorsDTO };
 
@@ -92,37 +114,55 @@ namespace LitExplorerAPI.Controllers
         {
             try
             {
-                var bookDTOs = booksMeta.Select(bm => bm.BookSource.Book).Select(b => new BookDTO
+                var grouped = booksMeta.GroupBy(bm => bm.BookSource.Book.BookId);
+
+                var bookDTOs = grouped.Select(g =>
                 {
-                    BookId = b.BookId,
-                    Title = b.Title,
-                    BookSources = b.BooksSources.Select(bs => new BookSourceDTO
+                    var book = g.First().BookSource.Book;
+
+                    return new BookDTO
                     {
-                        BookSourceId = bs.BookSourceId,
-                        BookId = bs.BookId,
-                        SourceId = bs.SourceId,
-                        SiteUrl = bs.SiteUrl,
-                        BookMeta = new BookMetaDTO
+                        BookId = book.BookId,
+                        Title = book.Title,
+                        LibraryStatus = book.Libraries.Select(lib => new LibraryStatusDTO
                         {
-                            BookSourceId = bs.BooksMetum!.BookSourceId,
-                            AuthorId = bs.BooksMetum.AuthorId,
-                            Description = bs.BooksMetum.Description,
-                            AverageRating = bs.BooksMetum.AverageRating,
-                            RatingsCount = bs.BooksMetum.RatingsCount,
-                            TotalViewsCount = bs.BooksMetum.TotalViewsCount,
-                            ReadersCount = bs.BooksMetum.ReadersCount,
-                            ChaptersCount = bs.BooksMetum.ChaptersCount,
-                            FirstChapterReleaseDate = bs.BooksMetum.FirstChapterReleaseDate,
-                            LastChapterReleaseDate = bs.BooksMetum.LastChapterReleaseDate,
-                            CoverImageUrl = bs.BooksMetum.CoverImageUrl
-                        },
-                        Tags = bs.Tags.Select(t => new TagDTO
+                            StatusId = lib.StatusId,
+                            StatusName = lib.Status.StatusName
+                        }).FirstOrDefault(),
+                        BookSources = g.Select(bm =>
                         {
-                            TagId = t.TagId,
-                            CategoryId = t.CategoryId,
-                            TagName = t.TagName
+                            var bs = bm.BookSource;
+                            return new BookSourceDTO
+                            {
+                                BookSourceId = bs.BookSourceId,
+                                BookId = bs.BookId,
+                                SourceId = bs.SourceId,
+                                SiteUrl = bs.SiteUrl,
+                                LastReadChapter = bs.ReadingHistories.Select(rh => rh.LastReadChapter).FirstOrDefault(),
+                                LastReadingUpdateDate = bs.ReadingHistories.Select(rh => rh.LastReadingUpdateDate).FirstOrDefault(),
+                                BookMeta = new BookMetaDTO
+                                {
+                                    BookSourceId = bm.BookSourceId,
+                                    AuthorId = bm.AuthorId,
+                                    Description = bm.Description,
+                                    AverageRating = bm.AverageRating,
+                                    RatingsCount = bm.RatingsCount,
+                                    TotalViewsCount = bm.TotalViewsCount,
+                                    ReadersCount = bm.ReadersCount,
+                                    ChaptersCount = bm.ChaptersCount,
+                                    FirstChapterReleaseDate = bm.FirstChapterReleaseDate,
+                                    LastChapterReleaseDate = bm.LastChapterReleaseDate,
+                                    CoverImageUrl = bm.CoverImageUrl
+                                },
+                                Tags = bs.Tags.Select(t => new TagDTO
+                                {
+                                    TagId = t.TagId,
+                                    CategoryId = t.CategoryId,
+                                    TagName = t.TagName
+                                }).ToList()
+                            };
                         }).ToList()
-                    }).ToList()
+                    };
                 }).ToList();
 
                 return bookDTOs;
