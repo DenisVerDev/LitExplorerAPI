@@ -10,4 +10,6 @@ public partial class Book
     public string Title { get; set; } = null!;
 
     public virtual ICollection<BooksSource> BooksSources { get; set; } = new List<BooksSource>();
+
+    public virtual ICollection<Library> Libraries { get; set; } = new List<Library>();
 }

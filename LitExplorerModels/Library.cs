@@ -7,17 +7,15 @@ public partial class Library
 {
     public int UserId { get; set; }
 
-    public int BookSourceId { get; set; }
+    public int BookId { get; set; }
 
     public int StatusId { get; set; }
 
     public DateTime AddedDate { get; set; }
 
-    public DateTime? LastUpdateDate { get; set; }
+    public DateTime? LastStatusUpdateDate { get; set; }
 
-    public int? LastReadChapter { get; set; }
-
-    public virtual BooksSource BookSource { get; set; } = null!;
+    public virtual Book Book { get; set; } = null!;
 
     public virtual LibraryStatus Status { get; set; } = null!;
 
