@@ -51,7 +51,7 @@ namespace LitExplorerAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> BrowseBooks([FromBody] BrowseFilterDTO filter, int page, int count)
+        public async Task<IActionResult> BrowseBooks([FromBody] BrowseFilterDTO filter, int page, int count, int userId)
         {
             try
             {
@@ -62,12 +62,12 @@ namespace LitExplorerAPI.Controllers
                 var query = litExplorerContext.BooksMeta
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Book)
-                            .ThenInclude(b => b.Libraries)
+                            .ThenInclude(b => b.Libraries.Where(lib=>lib.UserId == userId))
                                 .ThenInclude(lib => lib.Status)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
                     .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.ReadingHistories)
+                        .ThenInclude(bs => bs.ReadingHistories.Where(rh => rh.UserId == userId))
                     .Include(bm => bm.Author)
                     .AsQueryable();
 
@@ -81,12 +81,12 @@ namespace LitExplorerAPI.Controllers
                 var unsortedBooksMeta = await litExplorerContext.BooksMeta
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Book)
-                            .ThenInclude(b => b.Libraries)
+                            .ThenInclude(b => b.Libraries.Where(lib => lib.UserId == userId))
                                 .ThenInclude(lib => lib.Status)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
                     .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.ReadingHistories)
+                        .ThenInclude(bs => bs.ReadingHistories.Where(rh => rh.UserId == userId))
                     .Include(bm => bm.Author)
                     .Where(bm => books.Any(x => x == bm.BookSource.BookId))
                     .ToListAsync();

@@ -16,7 +16,7 @@ namespace LitExplorerAPI.Controllers
             => this.litExplorerContext = litExplorerContext;
 
         [HttpGet]
-        public async Task<IActionResult> InspectLibrary(int userId, int page, int count)
+        public async Task<IActionResult> InspectLibrary(int userId, LibraryStatusOptions lOption, int page, int count)
         {
             try
             {
@@ -30,7 +30,7 @@ namespace LitExplorerAPI.Controllers
                     .Include(bm=> bm.BookSource)
                         .ThenInclude(bs => bs.ReadingHistories)
                     .Include(bm => bm.Author)
-                    .Where(bm=> litExplorerContext.Libraries.Any(lib=> lib.UserId == userId && lib.BookId == bm.BookSource.BookId))
+                    .Where(bm=> litExplorerContext.Libraries.Any(lib=> lib.UserId == userId && lib.BookId == bm.BookSource.BookId && lib.StatusId == (int)lOption))
                     .AsQueryable();
 
                 query = query.OrderByDescending(bm => bm.LastChapterReleaseDate);
