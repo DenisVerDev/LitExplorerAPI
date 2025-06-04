@@ -1,4 +1,5 @@
 using LitExplorerAPI.LitExplorerModels;
+using LitExplorerAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,8 +17,17 @@ builder.Services.AddDbContext<LitExplorerContext>
         o=>o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
     )
 );
+builder.Services.AddSingleton<BooksFeaturesStorage>(serviceProvider =>
+{
+    using var scope = serviceProvider.CreateScope();
+    var scopedContext = scope.ServiceProvider.GetRequiredService<LitExplorerContext>();
+
+    return new BooksFeaturesStorage(scopedContext);
+});
 
 var app = builder.Build();
+
+var featuresStorage = app.Services.GetRequiredService<BooksFeaturesStorage>(); // initialize constructor
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

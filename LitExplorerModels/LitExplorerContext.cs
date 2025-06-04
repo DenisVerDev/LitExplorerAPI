@@ -19,6 +19,8 @@ public partial class LitExplorerContext : DbContext
 
     public virtual DbSet<Book> Books { get; set; }
 
+    public virtual DbSet<BooksFeature> BooksFeatures { get; set; }
+
     public virtual DbSet<BooksMetum> BooksMeta { get; set; }
 
     public virtual DbSet<BooksSource> BooksSources { get; set; }
@@ -55,6 +57,18 @@ public partial class LitExplorerContext : DbContext
             entity.HasIndex(e => e.Title, "UQ__Books__2CB664DC5927EFDC").IsUnique();
 
             entity.Property(e => e.Title).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<BooksFeature>(entity =>
+        {
+            entity.HasKey(e => e.BookId).HasName("PK__BooksFea__3DE0C207FE6508B5");
+
+            entity.Property(e => e.BookId).ValueGeneratedNever();
+            entity.Property(e => e.CreatedAt).HasColumnType("datetime");
+
+            entity.HasOne(d => d.Book).WithOne(p => p.BooksFeature)
+                .HasForeignKey<BooksFeature>(d => d.BookId)
+                .HasConstraintName("FK__BooksFeat__Creat__160F4887");
         });
 
         modelBuilder.Entity<BooksMetum>(entity =>
