@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using LitExplorerAPI.Services;
 
 namespace LitExplorerAPI.Controllers
 {
@@ -12,9 +13,13 @@ namespace LitExplorerAPI.Controllers
     public class RecommendationsController : ControllerBase
     {
         private readonly LitExplorerContext litExplorerContext;
+        private readonly BooksFeaturesStorage booksFeaturesStorage;
 
-        public RecommendationsController(LitExplorerContext litExplorerContext)
-            => this.litExplorerContext = litExplorerContext;
+        public RecommendationsController(LitExplorerContext litExplorerContext, BooksFeaturesStorage booksFeaturesStorage)
+        {
+            this.litExplorerContext = litExplorerContext;
+            this.booksFeaturesStorage = booksFeaturesStorage;
+        }
 
         [HttpPost]
         public async Task<IActionResult> RecommendBooks([FromBody] UserDTO? userDTO, RecommendationsOptions rOptions, int count)
@@ -109,9 +114,9 @@ namespace LitExplorerAPI.Controllers
                     throw new Exception("User doesn't have any previous interactions with books");
 
                 // 2. Вибираємо вектори ознак для книг користувача з кешу BooksFeatures
-                var userFeaturesList = await litExplorerContext.BooksFeatures
+                var userFeaturesList = booksFeaturesStorage.BooksFeatures
                                             .Where(bf => userBookIds.Contains(bf.BookId))
-                                            .ToListAsync();
+                                            .ToList();
                 // Будуємо середній профіль користувача (усереднений вектор)
                 float[] userProfileVector = new float[0];
                 int vectorLength = 0;
@@ -140,9 +145,12 @@ namespace LitExplorerAPI.Controllers
                 }
 
                 // 3. Обчислюємо косинусну схожість профілю з усіма іншими книгами:contentReference[oaicite:11]{index=11}
-                var allFeatures = await litExplorerContext.BooksFeatures
-                                     .Where(bf => !userBookIds.Contains(bf.BookId)).Take(500)
-                                     .ToListAsync();
+                Random random = new Random();
+                int skipValue = random.Next(0, booksFeaturesStorage.BooksFeatures.Count - 500 - userBookIds.Count);
+
+                var allFeatures = booksFeaturesStorage.BooksFeatures
+                                     .Where(bf => !userBookIds.Contains(bf.BookId)).Skip(skipValue).Take(500)
+                                     .ToList();
                 // Змінні для топ-рекомендацій
                 var topRecommendations = new List<(int BookId, double CosineSimilarity)>();
 
@@ -190,12 +198,12 @@ namespace LitExplorerAPI.Controllers
                 var recommendedMeta = await litExplorerContext.BooksMeta
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Book)
-                            .ThenInclude(b => b.Libraries)
+                            .ThenInclude(b => b.Libraries.Where(lib => lib.UserId == userId))
                                 .ThenInclude(lib => lib.Status)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
                     .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.ReadingHistories)
+                        .ThenInclude(bs => bs.ReadingHistories.Where(rh => rh.UserId == userId))
                     .Include(bm => bm.Author)
                     .Where(bm => recommendedIds.Contains(bm.BookSource.BookId))
                     .ToListAsync();
