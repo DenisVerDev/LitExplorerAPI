@@ -44,40 +44,32 @@ namespace LitExplorerAPI.Controllers
                     .Include(bm => bm.Author)
                     .AsQueryable();
 
+                var queryGroup = query.GroupBy(bm => bm.BookSource.BookId);
                 switch (rOptions)
                 {
                     case RecommendationsOptions.BestOfMonth:
-                        query = GetBestOfMonth(query);
+                        queryGroup = GetBestOfMonth(queryGroup);
                         break;
 
                     case RecommendationsOptions.Hottest:
-                        query = GetHottest(query);
+                        queryGroup = GetHottest(queryGroup);
                         break;
 
                     default: throw new Exception("There is no such supported recommendation option!");
                 }
 
-                // 2nd part - picking results
-                query = query.Take(count * 2); // 2 is number of sources in database. Duplicate metadata of the same books is possible
-                var books = await query.Select(bm => bm.BookSource.BookId).Distinct().Take(count).ToListAsync();
-                var unsortedBooksMeta = await litExplorerContext.BooksMeta
-                    .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.Book)
-                            .ThenInclude(b => b.Libraries.Where(lib => lib.UserId == userId))
-                                .ThenInclude(lib => lib.Status)
-                    .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.Tags)
-                    .Include(bm => bm.BookSource)
-                        .ThenInclude(bs => bs.ReadingHistories.Where(rh => rh.UserId == userId))
-                    .Include(bm => bm.Author)
-                    .Where(bm => books.Any(x => x == bm.BookSource.BookId))
-                    .ToListAsync();
-
-                var sortedBooksMeta = books.SelectMany(b => unsortedBooksMeta.Where(bm => bm.BookSource.BookId == b)).ToList();
+                // 2nd part
+                var bookIds = await queryGroup.Select(g => g.First().BookSource.BookId).Take(count).ToListAsync();
+                var booksMeta = new List<BooksMetum>();
+                foreach (var id in bookIds)
+                {
+                    var metaGroup = await query.Where(bm => bm.BookSource.BookId == id).ToListAsync();
+                    booksMeta.AddRange(metaGroup);
+                }
 
                 // 3rd part - trasforming into DTO
-                var booksDTO = ToBookDTO(sortedBooksMeta);
-                var authorsDTO = ToAuthorDTO(sortedBooksMeta);
+                var booksDTO = ToBookDTO(booksMeta);
+                var authorsDTO = ToAuthorDTO(booksMeta);
 
                 var result = new { Books = booksDTO, Authors = authorsDTO };
 
@@ -226,24 +218,26 @@ namespace LitExplorerAPI.Controllers
             }
         }
 
-        private IQueryable<BooksMetum> GetBestOfMonth(IQueryable<BooksMetum> query)
+        private IQueryable<IGrouping<int,BooksMetum>> GetBestOfMonth(IQueryable<IGrouping<int, BooksMetum>> query)
         {
             var now = DateTime.UtcNow;
             var monthStart = new DateTime(now.Year, now.Month, 1);
 
-            query = query.Where(bm => bm.LastChapterReleaseDate.HasValue && bm.LastChapterReleaseDate.Value >= monthStart)
-                         .OrderByDescending(bm => (bm.RatingsCount ?? 0) + (bm.ReadersCount ?? 0));
+            // temporal All func, should be Any with mechanism to show the best suited version of the book
+            query = query.Where(g=>g.All(bm => bm.LastChapterReleaseDate.HasValue && bm.LastChapterReleaseDate.Value >= monthStart))
+                         .OrderByDescending(g=>g.Max(bm => (bm.RatingsCount ?? 0) + (bm.ReadersCount ?? 0)));
 
             return query;
         }
 
-        private IQueryable<BooksMetum> GetHottest(IQueryable<BooksMetum> query)
+        private IQueryable<IGrouping<int, BooksMetum>> GetHottest(IQueryable<IGrouping<int, BooksMetum>> query)
         {
             var now = DateTime.UtcNow;
             var monthStart = new DateTime(now.Year, now.Month, 1);
 
-            query = query.Where(bm => bm.FirstChapterReleaseDate.HasValue && bm.FirstChapterReleaseDate.Value >= monthStart)
-                         .OrderByDescending(bm => bm.FirstChapterReleaseDate);
+            // temporal All func, should be Any with mechanism to show the best suited version of the book
+            query = query.Where(g=>g.All(bm => bm.FirstChapterReleaseDate.HasValue && bm.FirstChapterReleaseDate.Value >= monthStart))
+                         .OrderByDescending(g=>g.Max(bm => bm.FirstChapterReleaseDate));
 
             return query;
         }

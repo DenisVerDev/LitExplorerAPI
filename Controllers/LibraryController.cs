@@ -20,23 +20,33 @@ namespace LitExplorerAPI.Controllers
         {
             try
             {
+                //1st part
                 var query = litExplorerContext.BooksMeta
-                    .Include(bm=>bm.BookSource)
+                    .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Book)
-                            .ThenInclude(b=>b.Libraries)
-                                .ThenInclude(lib=>lib.Status)
+                            .ThenInclude(b => b.Libraries)
+                                .ThenInclude(lib => lib.Status)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
-                    .Include(bm=> bm.BookSource)
+                    .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.ReadingHistories)
                     .Include(bm => bm.Author)
-                    .Where(bm=> litExplorerContext.Libraries.Any(lib=> lib.UserId == userId && lib.BookId == bm.BookSource.BookId && lib.StatusId == (int)lOption))
+                    .Where(bm => litExplorerContext.Libraries.Any(lib => lib.UserId == userId && lib.BookId == bm.BookSource.BookId && lib.StatusId == (int)lOption))
                     .AsQueryable();
 
-                query = query.OrderByDescending(bm => bm.LastChapterReleaseDate);
+                var queryGroup = query.GroupBy(bm => bm.BookSource.BookId);
+                queryGroup = queryGroup.OrderByDescending(g => g.Max(bm => bm.LastChapterReleaseDate));
 
-                var booksMeta = await query.Skip(page * count).Take(count).ToListAsync();
+                // 2nd part
+                var bookIds = await queryGroup.Select(g => g.First().BookSource.BookId).Skip(page * count).Take(count).ToListAsync();
+                var booksMeta = new List<BooksMetum>();
+                foreach (var id in bookIds)
+                {
+                    var metaGroup = await query.Where(bm => bm.BookSource.BookId == id).ToListAsync();
+                    booksMeta.AddRange(metaGroup);
+                }
 
+                // 3rd part
                 var booksDTO = ToBookDTO(booksMeta);
                 var authorsDTO = ToAuthorDTO(booksMeta);
 
