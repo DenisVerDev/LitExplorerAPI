@@ -81,8 +81,18 @@ namespace LitExplorerAPI.Controllers
                 var booksMeta = new List<BooksMetum>();
                 foreach (var id in bookIds)
                 {
-                    var metaGroup = await query.Where(bm => bm.BookSource.BookId == id).ToListAsync();
-                    booksMeta.AddRange(metaGroup);
+                    // 1st - find the first BooksMeta that satisfies all filters and sorting
+                    var queryMeta = query.Where(bm => bm.BookSource.BookId == id);
+                    queryMeta = ApplyFilters(queryMeta, filter);
+                    queryMeta = ApplySorting(queryMeta, filter);
+
+                    // 2nd - add this BoosMeta to booksMeta list
+                    var bestMeta = await queryMeta.FirstAsync();
+                    booksMeta.Add(bestMeta);
+
+                    // 3rd - finde others relevant BooksMeta and add them to booksMeta list
+                    var otherMetas = await query.Where(bm => bm.BookSource.BookId == id && bm.BookSourceId != bestMeta.BookSourceId).ToListAsync();
+                    booksMeta.AddRange(otherMetas);
                 }
 
                 // 3rd part - trasforming into DTO
@@ -102,7 +112,7 @@ namespace LitExplorerAPI.Controllers
         private IQueryable<IGrouping<int, BooksMetum>> ApplyFilters(IQueryable<IGrouping<int,BooksMetum>> query, BrowseFilterDTO filter)
         {
             if (!filter.Title.IsNullOrEmpty())
-                query = query.Where(g=>g.All(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!)));
+                query = query.Where(g=>g.Any(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!)));
 
             if (!filter.Tags.IsNullOrEmpty())
             {
@@ -147,6 +157,58 @@ namespace LitExplorerAPI.Controllers
 
             if (filter.ActivityYearRange.Value.HasValue) // max year condition
                 query = query.Where(g => g.Any(bm => bm.LastChapterReleaseDate!.Value.Year <= filter.ActivityYearRange.Value.Value));
+
+            return query;
+        }
+
+        private IQueryable<BooksMetum> ApplyFilters(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
+        {
+            if (!filter.Title.IsNullOrEmpty())
+                query = query.Where(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!));
+
+            if (!filter.Tags.IsNullOrEmpty())
+            {
+                var filterTagsCategorised = litExplorerContext.Tags
+                    .Where(t => filter.Tags!.Contains(t.TagId))
+                    .GroupBy(t => t.CategoryId)
+                    .Select(g => new
+                    {
+                        CategoryId = g.Key,
+                        Tags = g.Select(t => t.TagId).ToList()
+                    }).ToList();
+
+                foreach (var category in filterTagsCategorised)
+                {
+                    if (category.CategoryId < 6)
+                        query = query.Where(bm => category.Tags.All(ft => bm.BookSource.Tags.Any(t => t.CategoryId == category.CategoryId && t.TagId == ft)));
+                    else
+                        query = query.Where(bm => category.Tags.Any(ft => bm.BookSource.Tags.Any(t => t.CategoryId == category.CategoryId && t.TagId == ft)));
+                }
+            }
+
+            if (!filter.Sources.IsNullOrEmpty())
+                query = query.Where(bm => filter.Sources!.Contains(bm.BookSource.SourceId));
+
+            // AverageRatingRange segment
+            if (filter.AverageRatingRange.Key.HasValue) // minRating condition
+                query = query.Where(bm => bm.AverageRating >= filter.AverageRatingRange.Key.Value);
+
+            if (filter.AverageRatingRange.Value.HasValue) // maxRating condition
+                query = query.Where(bm => bm.AverageRating <= filter.AverageRatingRange.Value.Value);
+
+            // ChaptersCountRange segment
+            if (filter.ChaptersCountRange.Key.HasValue) // min number of chapters condition
+                query = query.Where(bm => bm.ChaptersCount >= filter.ChaptersCountRange.Key.Value);
+
+            if (filter.ChaptersCountRange.Value.HasValue) // max number of chapters condition
+                query = query.Where(bm => bm.ChaptersCount <= filter.ChaptersCountRange.Value.Value);
+
+            // ActivityYearRange segment
+            if (filter.ActivityYearRange.Key.HasValue) // min year condition
+                query = query.Where(bm => bm.FirstChapterReleaseDate!.Value.Year >= filter.ActivityYearRange.Key.Value);
+
+            if (filter.ActivityYearRange.Value.HasValue) // max year condition
+                query = query.Where(bm => bm.LastChapterReleaseDate!.Value.Year <= filter.ActivityYearRange.Value.Value);
 
             return query;
         }
@@ -199,9 +261,68 @@ namespace LitExplorerAPI.Controllers
 
                 case SortByOptions.ByTitle:
                     if (filter.SortByType == SortByType.DESC)
-                        query = query.OrderByDescending(g => g.First().BookSource.Book.Title);
+                        query = query.OrderByDescending(g => g.Max(bm=>bm.BookSource.Book.Title));
                     else
-                        query = query.OrderBy(g => g.First().BookSource.Book.Title);
+                        query = query.OrderBy(g => g.Max(bm => bm.BookSource.Book.Title));
+                    break;
+
+                default: break;
+            }
+
+            return query;
+        }
+
+        private IQueryable<BooksMetum> ApplySorting(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
+        {
+            switch (filter.SortByOption)
+            {
+                case SortByOptions.ByPopularity:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => (bm.RatingsCount ?? 0) + (bm.ReadersCount ?? 0));
+                    else
+                        query = query.OrderBy(bm => (bm.RatingsCount ?? 0) + (bm.ReadersCount ?? 0));
+                    break;
+
+                case SortByOptions.ByRating:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.AverageRating);
+                    else
+                        query = query.OrderBy(bm => bm.AverageRating);
+                    break;
+
+                case SortByOptions.ByViews:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.TotalViewsCount);
+                    else
+                        query = query.OrderBy(bm => bm.TotalViewsCount);
+                    break;
+
+                case SortByOptions.ByChapters:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.ChaptersCount);
+                    else
+                        query = query.OrderBy(bm => bm.ChaptersCount);
+                    break;
+
+                case SortByOptions.ByReleaseDate:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.FirstChapterReleaseDate);
+                    else
+                        query = query.OrderBy(bm => bm.FirstChapterReleaseDate);
+                    break;
+
+                case SortByOptions.ByUpdateDate:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.LastChapterReleaseDate);
+                    else
+                        query = query.OrderBy(bm => bm.LastChapterReleaseDate);
+                    break;
+
+                case SortByOptions.ByTitle:
+                    if (filter.SortByType == SortByType.DESC)
+                        query = query.OrderByDescending(bm => bm.BookSource.Book.Title);
+                    else
+                        query = query.OrderBy(bm => bm.BookSource.Book.Title);
                     break;
 
                 default: break;
