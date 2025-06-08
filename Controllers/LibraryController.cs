@@ -31,10 +31,11 @@ namespace LitExplorerAPI.Controllers
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.ReadingHistories)
                     .Include(bm => bm.Author)
-                    .Where(bm => litExplorerContext.Libraries.Any(lib => lib.UserId == userId && lib.BookId == bm.BookSource.BookId && lib.StatusId == (int)lOption))
                     .AsQueryable();
 
-                var queryGroup = query.GroupBy(bm => bm.BookSource.BookId);
+                var queryFilter = query.Where(bm => litExplorerContext.Libraries.Any(lib => lib.UserId == userId && lib.BookId == bm.BookSource.BookId && lib.StatusId == (int)lOption));
+
+                var queryGroup = queryFilter.GroupBy(bm => bm.BookSource.BookId);
                 queryGroup = queryGroup.OrderByDescending(g => g.Max(bm => bm.LastChapterReleaseDate));
 
                 // 2nd part
@@ -42,8 +43,14 @@ namespace LitExplorerAPI.Controllers
                 var booksMeta = new List<BooksMetum>();
                 foreach (var id in bookIds)
                 {
-                    var metaGroup = await query.Where(bm => bm.BookSource.BookId == id).ToListAsync();
-                    booksMeta.AddRange(metaGroup);
+                    var queryMeta = queryFilter.Where(bm => bm.BookSource.BookId == id);
+                    queryMeta = queryMeta.OrderByDescending(bm => bm.LastChapterReleaseDate);
+
+                    var bestMeta = await queryMeta.FirstAsync();
+                    booksMeta.Add(bestMeta);
+
+                    var otherMetas = await query.Where(bm => bm.BookSource.BookId == id && bm.BookSourceId != bestMeta.BookSourceId).ToListAsync();
+                    booksMeta.AddRange(otherMetas);
                 }
 
                 // 3rd part
