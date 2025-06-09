@@ -32,12 +32,13 @@ namespace LitExplorerAPI.Controllers
                         .ThenInclude(bs => bs.Book)
                     .Include(bm => bm.BookSource)
                         .ThenInclude(bs => bs.Tags)
-                    .GroupBy(bm => bm.BookSource.BookId)
                     .AsQueryable();
 
                 query = ApplyFilters(query, filter);
 
-                int totalBooks = await query.CountAsync();
+                var queryGroup = query.GroupBy(bm => bm.BookSource.BookId);
+
+                int totalBooks = await queryGroup.CountAsync();
                 int result = totalBooks / pageSize;
 
                 if (result > 0 && result * pageSize < totalBooks)
@@ -112,7 +113,8 @@ namespace LitExplorerAPI.Controllers
         private IQueryable<IGrouping<int, BooksMetum>> ApplyFilters(IQueryable<IGrouping<int, BooksMetum>> query, BrowseFilterDTO filter)
         {
             if (!filter.Title.IsNullOrEmpty())
-                query = query.Where(g => g.Any(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!)));
+                query = query.Where(g => g.Any(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "")
+                .Contains(filter.Title!.ToLower().Replace(" ", ""))));
 
             if (!filter.Tags.IsNullOrEmpty())
             {
@@ -164,7 +166,8 @@ namespace LitExplorerAPI.Controllers
         private IQueryable<BooksMetum> ApplyFilters(IQueryable<BooksMetum> query, BrowseFilterDTO filter)
         {
             if (!filter.Title.IsNullOrEmpty())
-                query = query.Where(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "").Contains(filter.Title!));
+                query = query.Where(bm => bm.BookSource.Book.Title.ToLower().Replace(" ", "")
+                .Contains(filter.Title!.ToLower().Replace(" ", "")));
 
             if (!filter.Tags.IsNullOrEmpty())
             {
@@ -261,7 +264,7 @@ namespace LitExplorerAPI.Controllers
 
                 case SortByOptions.ByTitle:
                     if (filter.SortByType == SortByType.DESC)
-                        query = query.OrderByDescending(g => g.Max(bm=>bm.BookSource.Book.Title));
+                        query = query.OrderByDescending(g => g.Max(bm => bm.BookSource.Book.Title));
                     else
                         query = query.OrderBy(g => g.Max(bm => bm.BookSource.Book.Title));
                     break;
