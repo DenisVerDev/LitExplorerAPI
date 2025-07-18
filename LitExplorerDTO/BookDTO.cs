@@ -6,6 +6,8 @@
 
         public string Title { get; set; } = null!;
 
+        public LibraryStatusDTO? LibraryStatus { get; set; } = null;
+
         public List<BookSourceDTO> BookSources { get; set; } = null!;
     }
 }
